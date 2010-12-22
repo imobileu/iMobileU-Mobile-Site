@@ -2,10 +2,8 @@
 
 require_once realpath(LIB_DIR.'/Module.php');
 
-class SiteFrameworkModule extends DrupalContentModule {
+class SiteFrameworkModule extends Module {
    protected $id = 'framework';
-   protected $BASE_URL = 'http://imobileu.org';
-   protected $PATH = 'feed';
   
   protected function getNodeForPage($page)
   {
@@ -23,7 +21,9 @@ class SiteFrameworkModule extends DrupalContentModule {
     {
       case 'overview':
       case 'modules':
-        if ($item = $this->fetchNode($this->getNodeForPage($this->page), true)) {
+        $DrupalDataController = DrupalDataController::factory($this->getSiteSection('drupal'));
+        
+        if ($item = $DrupalDataController->fetchNode($this->getNodeForPage($this->page), true)) {
             $this->assign('content', $item->getContent());
             $this->assign('title', $item->getTitle());
             $this->setTemplatePage('content');
