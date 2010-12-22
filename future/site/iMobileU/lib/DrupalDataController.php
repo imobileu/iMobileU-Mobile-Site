@@ -27,29 +27,47 @@ class DrupalDataController extends RSSDataController
         
         return $controller;
     }
+    
+    protected function replaceRelative(&$item)
+    {
+        $content = new RSSElement('content');
+        $bits = preg_split('/(src|href)\s*=\s*"([^"]+)"/', $item->getContent(), -1, PREG_SPLIT_DELIM_CAPTURE );
+        $i = 0;
+        $content->setValue(array_shift($bits));
+
+        while ( $i<count( $bits ) ) {
+            $attrib = $bits[$i++];
+            $url = $bits[$i++];
+            if ($url[0]=='/') {
+                $url = $this->DRUPAL_SITE_BASE_URL . $url;
+            } elseif (!preg_match("/^(http|mailto)/", $url)) {
+                trigger_error("Relative URL $url found, this might not be handled properly", E_USER_WARNING);
+            }
+            $trail = $bits[$i++];
+            $content->appendValue(sprintf('%s="%s"%s', $attrib, $url, $trail));
+        }
+        $item->addElement($content);
+    }
+
+    public function fetchFeed($feed_url, $replace_relative=false)
+    {
+        $this->setBaseURL(sprintf("%s/%s", $this->DRUPAL_SITE_BASE_URL, $feed_url));
+        $items = $this->items();
+        if ($replace_relative) {
+            foreach ($items as $item) {
+                $this->replaceRelative($item);
+            }
+        }
+        
+        return $items;
+    }
 
     protected function fetchContent($replace_relative=false)
     {
         if (($items = $this->items()) && isset($items[0])) {
             $item = $items[0];
             if ($replace_relative) {
-                $content = new RSSElement('content');
-                $bits = preg_split('/(src|href)\s*=\s*"([^"]+)"/', $item->getContent(), -1, PREG_SPLIT_DELIM_CAPTURE );
-                $i = 0;
-                $content->setValue(array_shift($bits));
-        
-                while ( $i<count( $bits ) ) {
-                    $attrib = $bits[$i++];
-                    $url = $bits[$i++];
-                    if ($url[0]=='/') {
-                        $url = $this->DRUPAL_SITE_BASE_URL . $url;
-                    } elseif (!preg_match("/^(http|mailto)/", $url)) {
-                        trigger_error("Relative URL $url found, this might not be handled properly", E_USER_WARNING);
-                    }
-                    $trail = $bits[$i++];
-                    $content->appendValue(sprintf('%s="%s"%s', $attrib, $url, $trail));
-                }
-                $item->addElement($content);
+                $this->replaceRelative($item);
             }
             return $item;
         } else {
