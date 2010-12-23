@@ -1,6 +1,7 @@
 <?php
 
 class SiteCalendarModule extends CalendarModule {
+  protected $defaultSearchOption = 2;
 
   protected function initializeForPage() {
     switch ($this->page) {
