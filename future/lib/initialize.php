@@ -1,4 +1,7 @@
 <?php
+/**
+  * @package Core
+  */
 
 //
 // Initialization setup
@@ -9,8 +12,14 @@
 //            /device/[device]/ as the path.
 //
 
-define('ROOT_DIR', dirname(__FILE__).'/..'); // change if this file is moved
+/**
+  * change if this file is moved
+  */
+define('ROOT_DIR', dirname(__FILE__).'/..'); 
 
+/**
+  * 
+  */
 function Initialize(&$path=null) {
   //
   // Constants which cannot be set by config file
@@ -39,6 +48,22 @@ function Initialize(&$path=null) {
 
 
   //
+  // Set up host define for server name and port
+  //
+  $host = $_SERVER['SERVER_NAME'];
+  if ($_SERVER['SERVER_PORT']) {
+    $host .= ":{$_SERVER['SERVER_PORT']}";
+  }
+  define('SERVER_HOST', $host);
+  
+  
+  //
+  // And a double quote define for ini files (php 5.1 can't escape them)
+  //
+  define('_QQ_', '"');
+  
+
+  //
   // Get URL base
   //
   
@@ -62,8 +87,8 @@ function Initialize(&$path=null) {
     }
   }
   define('URL_BASE', $urlBase);
-  define('FULL_URL_BASE', sprintf("http://%s%s", $_SERVER['HTTP_HOST'], URL_BASE));
-
+  define('IS_SECURE', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on');
+  define('FULL_URL_BASE', sprintf("http%s://%s%s", IS_SECURE ? 's' : '', $_SERVER['HTTP_HOST'], URL_BASE));
   define('COOKIE_PATH', URL_BASE); // We are installed under URL_BASE
 
   //
@@ -114,12 +139,9 @@ function Initialize(&$path=null) {
 
   //error_log(__FUNCTION__."(): prefix: $urlPrefix");
   //error_log(__FUNCTION__."(): path: $path");
-
-  if (isset($device) || isset($_SERVER['HTTP_USER_AGENT']) && strlen($_SERVER['HTTP_USER_AGENT'])) {
-    require_once realpath(LIB_DIR.'/DeviceClassifier.php');
-    
-    $GLOBALS['deviceClassifier'] = new DeviceClassifier($device);
-  }
+  
+  require_once realpath(LIB_DIR.'/DeviceClassifier.php');
+  $GLOBALS['deviceClassifier'] = new DeviceClassifier($device);
   
   
   //

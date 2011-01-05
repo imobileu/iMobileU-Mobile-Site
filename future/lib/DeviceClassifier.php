@@ -1,7 +1,17 @@
 <?php
+/**
+  * @package Core
+  */
 
+/**
+  * Name of the cookie used for device classification
+  */
 define('COOKIE_KEY', 'deviceClassification');
 
+/**
+  * Contacts the Device Classification Server and sets the the appropriate properties
+  * @package Core
+  */
 class DeviceClassifier {
   private $pagetype = 'unknown';
   private $platform = 'unknown';
@@ -31,7 +41,7 @@ class DeviceClassifier {
       $this->setDevice($_COOKIE[COOKIE_KEY]);
       //error_log(__FUNCTION__."(): choosing device cookie '{$_COOKIE['layout']}' <{$_SERVER['REQUEST_URI']}>");
       
-    } else {
+    } elseif (isset($_SERVER['HTTP_USER_AGENT'])) {
       $query = http_build_query(array(
         'user-agent' => $_SERVER['HTTP_USER_AGENT'],
       ));
@@ -41,16 +51,17 @@ class DeviceClassifier {
       
       switch ($data['pagetype']) {
         case 'Basic':
-          if ($data['platform'] == 'computer' || $data['platform'] == 'spider') {
+          if ($data['platform'] == 'computer' || $data['platform'] == 'spider' || 
+           $data['platform'] == 'bbplus') {
             $this->pagetype = 'compliant';
           } else {
             $this->pagetype = 'basic';
           }
           break;
         
+        case 'Touch':
         case 'Compliant':
         case 'Webkit':
-        case 'Touch':
         default:
           $this->pagetype = 'compliant';
           break;
@@ -62,10 +73,11 @@ class DeviceClassifier {
         time() + $GLOBALS['siteConfig']->getVar('LAYOUT_COOKIE_LIFESPAN'), COOKIE_PATH);
 
       //error_log(__FUNCTION__."(): choosing mobi service layout '".$this->getDevice()."' <{$_SERVER['REQUEST_URI']}>");
+      //error_log('User-agent is: '.$_SERVER['HTTP_USER_AGENT']);
+    } else {
     }
     
     //error_log('DeviceClassifier chose: '.$this->getDevice());
-    //error_log('User-agent is: '.$_SERVER['HTTP_USER_AGENT']);
   }
   
   public function isComputer() {

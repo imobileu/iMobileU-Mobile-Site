@@ -1,5 +1,13 @@
 <?php
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 class RSSElement
 {
     protected $attribs=array();
@@ -38,7 +46,7 @@ class RSSElement
     
     public function setValue($value, $strip_tags=false)
     {
-        $this->value = $strip_tags ? strip_tags($value) : $value;
+        $this->value = $strip_tags ? strip_tags($value) : html_entity_decode($value);
     }
 
     public function appendValue($value)
@@ -101,6 +109,10 @@ class RSSElement
     
 }
 
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 class RSSChannel extends RSSElement
 {
     protected $name='channel';
@@ -197,6 +209,10 @@ class RSSChannel extends RSSElement
     
 }
 
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 class RSSItem extends RSSElement
 {
     protected $name='item';
@@ -355,6 +371,10 @@ class RSSItem extends RSSElement
     
 }
 
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 class RSSEnclosure extends RSSElement
 {
     protected $name='enclosure';
@@ -406,6 +426,10 @@ class RSSEnclosure extends RSSElement
     }
 }
 
+/**
+  * @package ExternalData
+  * @subpackage RSS
+  */
 class RSSImage extends RSSElement
 {
     protected $name='image';

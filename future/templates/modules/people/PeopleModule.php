@@ -1,7 +1,17 @@
 <?php
+/**
+  * @package Module
+  * @subpackage People
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/Module.php');
 
+/**
+  * @package Module
+  * @subpackage People
+  */
 class PeopleModule extends Module {
   protected $id = 'people';
   
@@ -132,7 +142,8 @@ class PeopleModule extends Module {
         
         $results[] = array(
           'url' => $this->buildBreadcrumbURL("/{$this->id}/detail", array(
-             'uid'    => $people[$i]->getId()
+             'uid'    => $people[$i]->getId(),
+             'filter' => $this->args['filter'],
           ), false),
           'title' => htmlentities($section[0]['title']),
         );
@@ -168,7 +179,7 @@ class PeopleModule extends Module {
     }
   }
   
-  protected function getFeed($index)
+  public function getFeed($index)
   {
     if (isset($this->feeds[$index])) {
         $feedData = $this->feeds[$index];
@@ -188,7 +199,6 @@ class PeopleModule extends Module {
       $this->detailAttributes = array_merge($this->detailAttributes, $info['attributes']);
     }
     $this->detailAttributes = array_unique($this->detailAttributes);
-
   }
 
   protected function initializeForPage() {
