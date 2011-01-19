@@ -154,7 +154,7 @@ select {
 	height: 30px;
 	padding: 4px 6px;
 	-webkit-appearance:textfield;
-	-webkit-border-radius: 5px;
+	-webkit-border-radius: 5px;	
 }
 
 .inputcombo {
@@ -180,6 +180,9 @@ select {
 	right: 0;
 	width: 38px;
 	height: 38px;
+	-webkit-box-shadow: 1px 3px 4px #102c57, 1px -3px 4px #102c57;
+	-webkit-border-bottom-right-radius: 5px;
+	-webkit-border-top-right-radius: 5px;
 }
 
 .emphasized {
@@ -280,14 +283,16 @@ a.homelink {
     background-image: none;
     margin-left: -2px;
     padding: 0;
-    width: 58px;
+    width: 87px;
 }
 .breadcrumbs a.homelink img {
     padding: 0;
+	width:87px;
 }
 
 a.module img {
-	padding: 8px 3px 8px 4px;
+	padding: 8px 0px 8px 4px;
+	/*background-image: url(../../../site/iMobileU/themes/default/common/images/compliant/breadcrumb.png);*/
 }
 
 .homepage .moduleicon {
@@ -319,13 +324,19 @@ a.module img {
 
 .pagetitle {
 	font-weight: bold;
-	margin-left: -4px;	
+	padding-left: 0px;	
 	vertical-align: top;
 	line-height: 44px;
+	height: 45px;
+	display: inline-block;
 }
 
 .homepage .pagetitle {
 	max-width: 210px;
+	line-height: 44px;
+	min-width: 230px;
+	vertical-align: top;
+	
 }
 
 .help {
@@ -1151,15 +1162,18 @@ h2.icon {
   padding: 0 .25em;
   margin: 0;
   text-align: left;
+  color:#89abc9;
 }
 .devicedetection th {
   font-weight: bold;
   text-align: right;
   white-space: nowrap;
   width: 50%;
+  color:#fff;
 }
 .devicedetection th[colspan],
 .devicedetection td[colspan] {
   width: auto;
   text-align: center;
+  color:#fff;
 }
