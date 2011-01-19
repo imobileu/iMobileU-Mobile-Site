@@ -41,6 +41,8 @@
         {/if}
       </p>
     {/if}
+
+    {$loginHTML}
   
     <p class="fontsize">
       Font size:&nbsp;
@@ -64,4 +66,7 @@
   {if strlen($gaImageURL)}
     <img src="{$gaImageURL}" />
   {/if}
+{/block}
+
+{block name="footerJavascript"}
 {/block}

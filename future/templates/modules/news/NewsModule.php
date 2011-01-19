@@ -1,11 +1,21 @@
 <?php
+/**
+  * @package Module
+  * @subpackage News
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/Module.php');
 
 if (!function_exists('mb_substr')) {
     die('Multibyte String Functions not available (mbstring)');
 }
 
+/**
+  * @package Module
+  * @subpackage News
+  */
 class NewsModule extends Module {
   protected $id = 'news';
   protected $hasFeeds = true;
@@ -13,7 +23,15 @@ class NewsModule extends Module {
   protected $feedFields = array('CACHE_LIFETIME'=>'Cache lifetime (seconds)','CONTROLLER_CLASS'=>'Controller Class','ITEM_CLASS'=>'Item Class', 'ENCLOSURE_CLASS'=>'Enclosure Class');
   private $feedIndex=0;
   protected $feed;
-  protected $maxPerPage;
+  protected $maxPerPage=10;
+
+  protected function getModuleDefaultData()
+  {
+    return array_merge(parent::getModuleDefaultData(), array(
+        'NEWS_MAX_RESULTS'=>10
+        )
+    );
+  }
   
   private function basicDeck($story, $bbplus) {
     $limit = $bbplus ? 95 : 75;
@@ -128,7 +146,9 @@ class NewsModule extends Module {
   
   protected function initialize() {
     $this->feeds      = $this->loadFeedData();
-    $this->maxPerPage = $GLOBALS['siteConfig']->getVar('NEWS_MAX_RESULTS');
+    if ($max = $this->getModuleVar('NEWS_MAX_RESULTS')) {
+        $this->maxPerPage = $max;
+    }
     
     $this->feedIndex = $this->getArg('section', 0);
     if (!isset($this->feeds[$this->feedIndex])) {
@@ -157,24 +177,16 @@ class NewsModule extends Module {
         }
         
         if (!$content = $story->getProperty('content')) {
-            if ($url = $story->getProperty('link')) {
-                header("Location: $url");
-                exit();
-            } else {
-                throw new Exception("No content or link found for story $storyID");
-            }
+          if ($url = $story->getProperty('link')) {
+              header("Location: $url");
+              exit();
+          } else {
+              throw new Exception("No content or link found for story $storyID");
+          }
         }
-        
-        $placeholder = ''; 
-        if ($this->pagetype == 'basic' && $this->platform == 'blackberry') {
-          $placeholder = '@'; // Some old blackberries don't like empty email links
-        }
-        $shareUrl = "mailto:{$placeholder}?".http_build_query(array(
-          "subject" => $story->getTitle(),
-          "body"    => $story->getDescription()."\n\n".$story->getLink()
-        ));
-        // mailto url's do not respect '+' (as space) so we convert to %20
-        $shareUrl = str_replace('+', '%20', $shareUrl);
+
+        $body = $story->getDescription()."\n\n".$story->getLink();
+        $shareEmailURL = $this->buildMailtoLink("", $story->getTitle(), $body);
 
         $pubDate = strtotime($story->getProperty("pubDate"));
         $date = date("M d, Y", $pubDate);
@@ -182,8 +194,10 @@ class NewsModule extends Module {
         $this->enablePager($content, $this->feed->getEncoding(), $storyPage);
         
         $this->assign('date',     $date);
-        $this->assign('shareUrl', $shareUrl);
+        $this->assign('storyURL', urlencode($story->getLink()));
+        $this->assign('shareEmailURL', $shareEmailURL);
         $this->assign('title',    $story->getTitle());
+        $this->assign('shareRemark', urlencode($story->getTitle()));
         $this->assign('author',   $story->getAuthor());
         $this->assign('image',    $this->getImageForStory($story));
         break;
@@ -224,9 +238,9 @@ class NewsModule extends Module {
             }
           }
 
-               $extraArgs = array(
-                'section'=>$this->feedIndex
-            );
+          $extraArgs = array(
+            'section'=>$this->feedIndex
+          );
 
           $this->assign('extraArgs',     $extraArgs);
           $this->assign('searchTerms', $searchTerms);
@@ -280,7 +294,7 @@ class NewsModule extends Module {
         }
         
         $hiddenArgs = array(
-            'section'=>$this->feedIndex
+          'section'=>$this->feedIndex
         );
         
         $this->assign('hiddenArgs',     $hiddenArgs);

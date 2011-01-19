@@ -1,7 +1,15 @@
 <?php
+/**
+  * @package Core
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/db.php');
 
+/**
+  * @package Core
+  */
 class PageViews {
 
   public static function log_api($module, $platform, $time=NULL) {
@@ -47,7 +55,7 @@ class PageViews {
   }
 
   public static function export_stats($system) {
-  
+    PageViews::createDatabaseTables();
     if ($system == 'web') {
       $table   = $GLOBALS['siteConfig']->getVar('PAGE_VIEWS_TABLE');
       $logfile = $GLOBALS['siteConfig']->getVar('WEB_CURRENT_LOG_FILE');
@@ -90,7 +98,7 @@ class PageViews {
       return; 
     }
 
-    $result = db::query(
+    $result = SiteDB::query(
       "SELECT day, platform, module, viewcount FROM $table
         WHERE day=(SELECT MAX(day) FROM $table)");
 
@@ -123,20 +131,20 @@ class PageViews {
     fclose($infile);
 
     if ($stats) {
-      db::query('LOCK TABLE $table WRITE');
-      db::query("DELETE FROM $table WHERE day=(SELECT MAX(day) FROM $table)");
+      SiteDB::query("LOCK TABLE $table WRITE");
+      SiteDB::query("DELETE FROM $table WHERE day=(SELECT MAX(day) FROM $table)");
       foreach ($stats as $day => $platforms) {
         foreach ($platforms as $platform => $modules) {
           foreach ($modules as $module => $count) {
             $sql = "INSERT INTO $table ( day, platform, module, viewcount )
                          VALUES (?,?,?,?)";
-            if (!db::query($sql, array($day, $platform, $module,$count))) {
+            if (!SiteDB::query($sql, array($day, $platform, $module,$count))) {
               error_log("query failed: $sql");
             }
           }
         }
       }
-      db::query("UNLOCK TABLE");
+      SiteDB::query("UNLOCK TABLE");
     }
 
     unlink($logfilecopy);
@@ -196,7 +204,7 @@ class PageViews {
       $sql .= ' FROM ' . $table . ' WHERE ' . implode(' AND ', $sql_criteria);
       $sql .= (isset($groupby) && count($groupby)) ? ' GROUP BY ' . implode(', ', $groupby) : '';
 
-      $result = db::query($sql);
+      $result = SiteDB::query($sql);
 
       // results are returned as (not necessarily in this order):
       // Array('module' => ..., 'platform' => ..., 'viewcount' => ...)
@@ -209,6 +217,28 @@ class PageViews {
         $output = Array();
       }
     return $output;
+  }
+  
+  protected function createDatabaseTables()
+  {
+    $sqls = array(
+        "CREATE TABLE IF NOT EXISTS mobi_web_page_views (
+            `day` date, 
+            `platform` char(31) NOT NULL, 
+            `module` char(31) NOT NULL, 
+            `viewcount` int(6) NOT NULL)",
+        "CREATE TABLE IF NOT EXISTS `mobi_api_requests` (
+            `day` date default NULL, 
+            `platform` char(31) default NULL, 
+            `module` char(31) default NULL,
+            `viewcount` int(11) default NULL,
+            UNIQUE (`day`,`platform`,`module`)
+        )"
+    );
+
+    foreach ($sqls as $sql) {
+        SiteDB::query($sql);
+    }
   }
 
   public static function view_past($system, $time_unit, $duration) {
@@ -300,7 +330,7 @@ class PageViews {
 
   public static function count_iphone_tokens() {
     $sql = "SELECT count(*) FROM AppleDevice WHERE device_token IS NOT NULL and active = 1";
-    $result = db::query($sql);
+    $result = SiteDB::query($sql);
     $row = $result->fetch_assoc();
     return $row;
   }

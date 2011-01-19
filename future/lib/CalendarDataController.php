@@ -1,9 +1,21 @@
 <?php
+/**
+ * CalendarDataController
+ * @package ExternalData
+ * @subpackage Calendar
+ */
 
+/**
+ * Retrieves and parses calendar data
+ * @package ExternalData
+ * @subpackage Calendar
+ */
 class CalendarDataController extends DataController
 {
     protected $DEFAULT_PARSER_CLASS='ICSDataParser';
     const DEFAULT_EVENT_CLASS='ICalEvent';
+    const START_TIME_LIMIT=-2147483647; 
+    const END_TIME_LIMIT=2147483647; 
     protected $startDate;
     protected $endDate;
     protected $calendar;
@@ -99,15 +111,40 @@ class CalendarDataController extends DataController
         return $controller;
     }
 
-    public function getItem($id)
+    public function getItem($id, $time=null)
     {
-        $this->setRequiresDateFilter(false);
-        $items = $this->items();
+        //use the time to limit the range of events to seek (necessary for recurring events)
+        if ($time) {
+            $start = new DateTime(date('Y-m-d H:i:s', $time));
+            $start->setTime(0,0,0);
+            $end = clone $start;
+            $end->setTime(23,59,59);
+            $this->setStartDate($start);
+            $this->setEndDate($end);
+        }
+        
+        $items = $this->events();
         if (array_key_exists($id, $items)) {
-            return $items[$id];
+            if (array_key_exists($time, $items[$id])) {
+                return $items[$id][$time];
+            }
         }
         
         return false;
+    }
+    
+    protected function events($limit=null)
+    {
+        if (!$this->calendar) {
+            $data = $this->getData();
+            $this->calendar = $this->parseData($data);
+        }
+
+        $startTimestamp = $this->startTimestamp() ? $this->startTimestamp() : CalendarDataController::START_TIME_LIMIT;
+        $endTimestamp = $this->endTimestamp() ? $this->endTimestamp() : CalendarDataController::END_TIME_LIMIT;
+        $range = new TimeRange($startTimestamp, $endTimestamp);
+        
+        return $this->calendar->getEventsInRange($range, $limit);
     }
     
     protected function clearInternalCache()
@@ -118,41 +155,20 @@ class CalendarDataController extends DataController
     
     public function items($start=0, $limit=null) 
     {
-        if (!$this->calendar) {
-            $data = $this->getData();
-            $this->calendar = $this->parseData($data);
-        }
-
-        $events = $this->calendar->get_events();
-        
-        if ($this->requiresDateFilter) {
-            $items = $events;
-            $events = array();
-            foreach ($items as $id => $event) {
-                if  ((($event->get_start() >= $this->startTimestamp()) &&
-                        ($event->get_start() <= $this->endTimestamp())) ||
-        
-                       (($event->get_end() >= $this->startTimestamp()) &&
-                        ($event->get_end() <= $this->endTimestamp())) ||
-        
-                        (($event->get_start() <= $this->startTimestamp()) &&
-                        ($event->get_end() >= $this->endTimestamp()))) 
-                {
-                    $events[$id] = $event;
+        $items = $this->events($limit);
+        $events = array();
+        foreach ($items as $eventOccurrences) {
+            foreach ($eventOccurrences as $occurrence) {
+                if ($this->contentFilter) {
+                    if ( (stripos($occurrence->get_description(), $this->contentFilter)!==FALSE) || (stripos($occurrence->get_summary(), $this->contentFilter)!==FALSE)) {
+                        $events[] = $occurrence;
+                    }
+                } else {
+                    $events[] = $occurrence;
                 }
             }
         }
 
-        if ($this->contentFilter) {
-            $items = $events;
-            $events = array();
-            foreach ($items as $id => $event) {
-                if ( (stripos($event->get_description(), $this->contentFilter)!==FALSE) || (stripos($event->get_summary(), $this->contentFilter)!==FALSE)) {
-                    $events[$id] = $event;
-                }
-            }
-        }
-        
         return $this->limitItems($events, $start, $limit);
     }
 }

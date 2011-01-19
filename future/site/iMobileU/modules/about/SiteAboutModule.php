@@ -1,6 +1,6 @@
 <?php
 
-class SiteAboutModule extends DrupalContentModule
+class SiteAboutModule extends Module
 {
    protected $id = 'about';
    protected $BASE_URL = 'http://imobileu.org';
@@ -11,7 +11,9 @@ class SiteAboutModule extends DrupalContentModule
         switch ($this->page)
         {
             case 'index':
-                if ($item = $this->fetchNode('3', true)) {
+                $DrupalDataController = DrupalDataController::factory($this->getSiteSection('drupal'));
+        
+                if ($item = $DrupalDataController->fetchNode('3', true)) {
                     $this->assign('content', $item->getContent());
                     $this->assign('title', $item->getTitle());
                 }

@@ -1,9 +1,16 @@
 <?php
+/**
+  * @package Module
+  */
 
-require_once realpath(LIB_DIR.'/TemplateEngine.php');
-require_once realpath(LIB_DIR.'/HTMLPager.php');
-require_once realpath(LIB_DIR.'/User.php');
+/**
+  * Breadcrumb Parameter
+  */
+define('MODULE_BREADCRUMB_PARAM', '_b');
 
+/**
+  * @package Core
+  */
 abstract class Module {
   protected $id = 'none';
   protected $moduleName = '';
@@ -50,6 +57,11 @@ abstract class Module {
   private $inPagedMode = true;
   
   private $tabbedView = null;
+  
+  public function getID()
+  {
+    return $this->id;
+  }
   
   //
   // Tabbed View support
@@ -108,7 +120,7 @@ abstract class Module {
     $pager = array(
       'pageNumber'   => $this->htmlPager->getPageNumber(),
       'pageCount'    => $this->htmlPager->getPageCount(),
-      'inPagedMode'  => $this->htmlPager->getPageNumber() != ALL_PAGES,
+      'inPagedMode'  => $this->htmlPager->getPageNumber() != HTMLPager::ALL_PAGES,
       'html' => array(
         'all'  => $this->htmlPager->getAllPagesHTML(),
         'page' => $this->htmlPager->getPageHTML(),
@@ -116,7 +128,7 @@ abstract class Module {
       'url' => array(
         'prev'  => null,
         'next'  => null,
-        'all'   => $this->urlForPage(ALL_PAGES),
+        'all'   => $this->urlForPage(HTMLPager::ALL_PAGES),
         'pages' => array(),
       ),
     );
@@ -238,6 +250,31 @@ abstract class Module {
     
     return "$page.php".(strlen($argString) ? "?$argString" : "");
   }
+  
+  protected function buildMailtoLink($to, $subject, $body) {
+    $to = trim($to);
+    
+    // Some old BlackBerries will give you an error about unsupported protocol
+    // if you have a mailto: link that doesn't have a "@" in the recipient 
+    // field. So we can't leave this field blank for these models. It's not
+    // a matter of being <= 9000 either, since there are Curves that are fine.
+    $modelsNeedingToField = array("8100", "8220", "8230", "9000");
+    if ($to == '') {
+      foreach ($modelsNeedingToField as $model) {
+        if (strpos($_SERVER['HTTP_USER_AGENT'], "BlackBerry".$model) !== FALSE) {
+          $to = '@';
+          break;
+        }
+      }
+    }
+
+    $url = "mailto:{$to}?".http_build_query(array("subject" => $subject, 
+                                                  "body" => $body));
+    // mailto url's do not respect '+' (as space) so we convert to %20
+    $url = str_replace('+', '%20', $url); 
+    
+    return $url;
+  }
 
   protected function redirectToModule($id, $args=array()) {
     $url = URL_BASE."{$id}/?". http_build_query($args);
@@ -266,27 +303,44 @@ abstract class Module {
   //
   // Configuration
   //
-  protected function getSiteVar($var, $log_error=true)
+  protected function getSiteVar($var, $log_error=Config::LOG_ERRORS)
   {
-      return $GLOBALS['siteConfig']->getVar($var, true, $log_error);
+      return $GLOBALS['siteConfig']->getVar($var, Config::EXPAND_VALUE, $log_error);
   }
 
-  protected function getSiteSection($var, $log_error=true)
+  protected function getSiteSection($var, $log_error=Config::LOG_ERRORS)
   {
       return $GLOBALS['siteConfig']->getSection($var, $log_error);
   }
 
-  protected function getModuleVar($var)
+  protected function getModuleVar($var, $default=null, $log_error=Config::LOG_ERRORS)
   {
      $config = $this->getModuleConfig();
-     return $config->getVar($var);
+     $value = $config->getVar($var, Config::EXPAND_VALUE, $log_error);
+     return is_null($value) ? $default :$value;
   }
 
-  protected function getModuleSection($section)
+  protected function getModuleSection($section, $default=array(), $log_error=Config::LOG_ERRORS)
   {
      $config = $this->getModuleConfig();
+     if (!$section = $config->getSection($section, $log_error)) {
+        $section = $default;
+     }
+     return $section;
+  }
+
+  public function getAPIVar($var, $default=null)
+  {
+     $config = $this->getAPIConfig();
+     $value = $config->getVar($var, Config::EXPAND_VALUE);
+     return is_null($value) ? $default :$value;
+  }
+
+  public function getAPISection($section, $default=array())
+  {
+     $config = $this->getAPIConfig();
      if (!$section = $config->getSection($section)) {
-        $section = array();
+        $section = $default;
      }
      return $section;
   }
@@ -360,8 +414,7 @@ abstract class Module {
        
   }
   
-  protected function loadFeedData()
-  {
+  protected function loadFeedData() {
     $data = null;
     $feedConfigFile = realpath_exists(sprintf("%s/feeds/%s.ini", SITE_CONFIG_DIR, $this->id));
     if ($feedConfigFile) {
@@ -384,7 +437,7 @@ abstract class Module {
             $formListItems = array();
             foreach ($strings as $string=>$value) {
                 $item = array(
-                    'label'=>ucfirst($string),
+                    'label'=>implode(" ", array_map("ucfirst", explode("_", strtolower($key)))),
                     'name'=>"moduleData[strings][$string]",
                     'typename'=>"moduleData][strings][$string",
                     'value'=>is_array($value) ? implode("\n\n", $value) : $value,
@@ -488,15 +541,35 @@ abstract class Module {
         }
         
         if ($this->getSiteVar('AUTHENTICATION_ENABLED')) {
-            $this->initSession();
             $user = $this->getUser();
-            $this->assign('session_userID', $user->getUserID());
+            $session = $this->getSession();
             $protected = self::argVal($moduleData, 'protected', false);
             if ($protected) {
-                if (!$this->session->isLoggedIn()) {
+                if (!$this->isLoggedIn()) {
                     $this->redirectToModule('error', array('code'=>'protected', 'url'=>URL_BASE . 'login/?' .
                         http_build_query(array('url'=>$_SERVER['REQUEST_URI']))));
                 }
+            }
+            
+            $acls = $this->getAccessControlLists();
+            $allow = count($acls) > 0 ? false : true; // if there are no ACLs then access is allowed
+            foreach ($acls as $acl) {
+                $result = $acl->evaluateForUser($user);
+                switch ($result)
+                {
+                    case AccessControlList::RULE_ACTION_ALLOW:
+                        $allow = true;
+                        break;
+                    case AccessControlList::RULE_ACTION_DENY:
+                        $this->redirectToModule('error', array('code'=>'protectedACL', 'url'=>URL_BASE . 'login/?' .
+                            http_build_query(array('url'=>$_SERVER['REQUEST_URI']))));
+                        break;
+                }
+            }
+            
+            if (!$allow) {
+                $this->redirectToModule('error', array('code'=>'protectedACL', 'url'=>URL_BASE . 'login/?' .
+                    http_build_query(array('url'=>$_SERVER['REQUEST_URI']))));
             }
         }
         
@@ -518,15 +591,13 @@ abstract class Module {
         }
   }
   
-  protected function initSession()
+  public function getSession()
   {
     if (!$this->session) {
-        $authorityClass = $this->getSiteVar('AUTHENTICATION_AUTHORITY');
-        $authorityArgs = $this->getSiteSection('authentication');
-        $AuthenticationAuthority = AuthenticationAuthority::factory($authorityClass, $authorityArgs);
-        
-        $this->session = new Session($AuthenticationAuthority);
+        $this->session = new Session();
     }
+    
+    return $this->session;
   }
   
   public function getModuleName()
@@ -558,7 +629,7 @@ abstract class Module {
   protected function getModuleItemForKey($key, $value)
   {
     $item = array(
-        'label'=>ucfirst($key),
+        'label'=>implode(" ", array_map("ucfirst", explode("_", strtolower($key)))),
         'name'=>"moduleData[$key]",
         'typename'=>"moduleData][$key",
         'value'=>$value,
@@ -627,10 +698,16 @@ abstract class Module {
   //
   // User functions
   //
+  
+  public function isLoggedIn()
+  {
+    $session = $this->getSession();
+    return $session->isLoggedIn();
+  }
   public function getUser()
   {
-    $this->initSession();
-    return $this->session->getUser();
+    $session = $this->getSession();
+    return $session->getUser();
   }
 
   //
@@ -658,6 +735,15 @@ abstract class Module {
     return $moduleConfig;
   }
 
+  public function getAPIConfig() {
+    static $apiConfig;
+    if (!$apiConfig) {
+        $apiConfig = $this->getConfig($this->id, 'api', ConfigFile::OPTION_CREATE_WITH_DEFAULT);
+    }
+
+    return $apiConfig;
+  }
+
   public function getModuleData() {
     static $moduleData;
     if (!$moduleData) {
@@ -667,6 +753,24 @@ abstract class Module {
     }
     
     return $moduleData;
+  }
+  
+  public function getAccessControlLists()
+  {
+    $acls = array();
+    $aclStrings = $this->getModuleVar('acl', array(), Config::SUPRESS_ERRORS);
+    foreach ($aclStrings as $aclString) {
+        $values = explode(':', $aclString);
+        if (count($values)==3) {
+            if ($acl = AccessControlList::factory($values[0], $values[1], $values[2])) {
+                $acls[] = $acl;
+            } else {
+                throw new Exception("Invalid ACL $aclString in $this->id");
+            }
+        }
+    }
+    
+    return $acls;
   }
 
   //
@@ -699,32 +803,71 @@ abstract class Module {
   // Breadcrumbs
   //
   private function loadBreadcrumbs() {
-    if (isset($this->args['breadcrumbs'])) {
-      $breadcrumbs = unserialize(rawurldecode($this->args['breadcrumbs']));
+    if (isset($this->args[MODULE_BREADCRUMB_PARAM])) {
+      $breadcrumbs = unserialize(urldecode($this->args[MODULE_BREADCRUMB_PARAM]));
       if (is_array($breadcrumbs)) {
+        for ($i = 0; $i < count($breadcrumbs); $i++) {
+          $b = $breadcrumbs[$i];
+          
+          $breadcrumbs[$i]['title'] = $b['t'];
+          $breadcrumbs[$i]['longTitle'] = $b['lt'];
+          
+          $breadcrumbs[$i]['url'] = "{$b['p']}.php";
+          if (strlen($b['a'])) {
+            $breadcrumbs[$i]['url'] .= "?{$b['a']}";
+          }
+          
+          $linkCrumbs = array_slice($breadcrumbs, 0, $i);
+          if (count($linkCrumbs)) { 
+            $this->cleanBreadcrumbs(&$linkCrumbs);
+            
+            $crumbParam = http_build_query(array(
+              MODULE_BREADCRUMB_PARAM => urlencode(serialize($linkCrumbs))
+            ));
+            if (strlen($crumbParam)) {
+              $breadcrumbs[$i]['url'] .= (strlen($b['a']) ? '&' : '?').$crumbParam;
+            }
+          }
+        }
+
         $this->breadcrumbs = $breadcrumbs;
+        
       }
     }
     //error_log(__FUNCTION__."(): loaded breadcrumbs ".print_r($this->breadcrumbs, true));
   }
   
+  private function cleanBreadcrumbs(&$breadcrumbs) {
+    foreach ($breadcrumbs as $index => $breadcrumb) {
+      unset($breadcrumbs[$index]['url']);
+      unset($breadcrumbs[$index]['title']);
+      unset($breadcrumbs[$index]['longTitle']);
+    }
+  }
+  
   private function getBreadcrumbString($addBreadcrumb=true) {
     $breadcrumbs = $this->breadcrumbs;
     
+    $this->cleanBreadcrumbs(&$breadcrumbs);
+    
     if ($addBreadcrumb && $this->page != 'index') {
+      $args = $this->args;
+      unset($args[MODULE_BREADCRUMB_PARAM]);
+      
       $breadcrumbs[] = array(
-        'title'     => $this->breadcrumbTitle,
-        'longTitle' => $this->breadcrumbLongTitle,
-        'url'       => self::buildURL($this->page, $this->args),
+        't'  => $this->breadcrumbTitle,
+        'lt' => $this->breadcrumbLongTitle,
+        'p'  => $this->page,
+        'a'  => http_build_query($args),
       );
     }
     //error_log(__FUNCTION__."(): saving breadcrumbs ".print_r($breadcrumbs, true));
-    return rawurlencode(serialize($breadcrumbs));
+    return urlencode(serialize($breadcrumbs));
   }
   
   private function getBreadcrumbArgs($addBreadcrumb=true) {
     return array(
-      'breadcrumbs' => $this->getBreadcrumbString($addBreadcrumb),
+      MODULE_BREADCRUMB_PARAM => $this->getBreadcrumbString($addBreadcrumb),
     );
   }
 
@@ -836,7 +979,6 @@ abstract class Module {
     $themeVars = $config->getSectionVars(true);
     
     if ($keyName === false) {
-    
       foreach($themeVars as $key => $value) {
         $this->templateEngine->assign($key, $value);
       }
@@ -892,7 +1034,7 @@ abstract class Module {
     $this->assign('minify', $this->getMinifyUrls());
     
     // Google Analytics. This probably needs to be moved
-    if ($gaID = $this->getSiteVar('GOOGLE_ANALYTICS_ID', false)) {
+    if ($gaID = $this->getSiteVar('GOOGLE_ANALYTICS_ID', Config::SUPRESS_ERRORS)) {
         $this->assign('GOOGLE_ANALYTICS_ID', $gaID);
         $this->assign('gaImageURL', $this->googleAnalyticsGetImageUrl($gaID));
     }
@@ -920,7 +1062,7 @@ abstract class Module {
 
     $this->assign('moduleDebugStrings',     $this->moduleDebugStrings);
     
-    $moduleStrings = $this->getModuleSection('strings');
+    $moduleStrings = $this->getModuleSection('strings', array(), Config::SUPRESS_ERRORS);
     $this->assign('moduleStrings', $moduleStrings);
 
     // Module Help
@@ -951,6 +1093,16 @@ abstract class Module {
       }
     }
     $this->assign('accessKeyStart', $accessKeyStart);
+
+    if ($this->getSiteVar('AUTHENTICATION_ENABLED')) {
+        $this->assign('session', $this->getSession());
+        $user = $this->getUser();
+        $this->assign('session_user', $user);
+        if ($authority = $user->getAuthenticationAuthority()) {
+            $this->assign('session_authority_image', $authority->getAuthorityImage());
+            $this->assign('session_authority_title', $authority->getAuthorityTitle());
+        }
+    }
 
     // Load template for page
     $this->templateEngine->displayForDevice($template);    

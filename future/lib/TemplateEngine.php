@@ -1,7 +1,15 @@
 <?php
+/**
+  * @package Core
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/smarty/Smarty.class.php');
 
+/**
+  * @package Core
+  */
 class TemplateEngine extends Smarty {
   static $accessKey = 0;
   
@@ -195,8 +203,12 @@ class TemplateEngine extends Smarty {
       array('TemplateEngine','smartyResourceIncludeGetTrusted')
     ));
     
+    // Postfilter to strip unnecessary whitespace (ignores <pre> and <script>)
+    $this->loadFilter('output','trimwhitespace');
+    
     // Postfilter to add url prefix to absolute urls
-    $this->registerFilter('output', array('TemplateEngine', 'smartyOutputfilterAddURLPrefix'));
+    $this->registerFilter('output', array('TemplateEngine', 
+      'smartyOutputfilterAddURLPrefix'));
     
     $this->registerPlugin('block', 'html_access_key_link',  
       'TemplateEngine::smartyBlockAccessKeyLink');
@@ -207,7 +219,7 @@ class TemplateEngine extends Smarty {
     $this->assign('pagetype', $pagetype);
     $this->assign('platform', $platform);
     $this->assign('supportsCerts', $supportsCerts ? 1 : 0);
-    $this->assign('showDeviceDetection', $GLOBALS['siteConfig']->getVar('SHOW_DEVICE_DETECTION'));
+    $this->assign('showDeviceDetection', $GLOBALS['siteConfig']->getVar('DEVICE_DETECTION_DEBUG'));
     $this->assign('moduleDebug', $GLOBALS['siteConfig']->getVar('MODULE_DEBUG'));
     
   }

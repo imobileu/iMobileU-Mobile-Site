@@ -1,7 +1,17 @@
 <?php
+/**
+  * @package Module
+  * @subpackage Admin
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/Module.php');
 
+/**
+  * @package Module
+  * @subpackage Admin
+  */
 class AdminModule extends Module {
   protected $id = 'admin';
   
@@ -44,6 +54,17 @@ class AdminModule extends Module {
     
     return $var;    
   }
+  
+  protected function prepareAdminForSection($section, $adminModule) {
+    $sectionVars = $this->getSiteSection($section);
+    $formListItems = array();
+
+    foreach ($sectionVars as $key=>$value) {
+        $formListItems[] = $this->getSiteItemForKey($section, $key, $value);
+    }
+
+    return $formListItems;    
+  }
 
   protected function prepareSubmitValue($value, $type)
   {
@@ -66,11 +87,24 @@ class AdminModule extends Module {
     
     return $value;
  }
+ 
+  protected function getSectionTitleForKey($key)
+  {
+     switch (strtolower($key))
+     {
+        case 'ga':
+            return 'Google Analytics';
+        default:
+           return implode(" ", array_map("ucfirst", explode("_", strtolower($key))));
+     }
+     return $key;
+  }
 
+                             
   protected function getSiteItemForKey($section, $key, $value)
   {
     $item = array(
-        'label'=>ucfirst($key),
+        'label'=>implode(" ", array_map("ucfirst", explode("_", strtolower($key)))),
         'name'=>"siteData[$section][$key]",
         'typename'=>"siteData][$section][$key",
         'value'=>$value,
@@ -80,6 +114,9 @@ class AdminModule extends Module {
     switch ($key)
     {
         default:
+            if (preg_match("/_(DEBUG|ENABLED)$/", $key)) {
+                $item['type'] = 'boolean';
+            }
             break;
     }
     
@@ -307,7 +344,7 @@ class AdminModule extends Module {
                 foreach ($strings as $key=>$value) {
                     if (is_scalar($value)) {
                         $formListItems[] = array(
-                        'label'=>$key,
+                        'label'=>implode(" ", array_map("ucfirst", explode("_", strtolower($key)))),
                         'name'=>"strings[$key]",
                         'typename'=>"strings][$key",
                         'value'=>$value,
@@ -315,7 +352,7 @@ class AdminModule extends Module {
                         );
                     } else {
                         $formListItems[] = array(
-                        'label'=>$key,
+                        'label'=>implode(" ", array_map("ucfirst", explode("_", strtolower($key)))),
                         'name'=>"strings[$key]",
                         'typename'=>"strings][$key",
                         'value'=>implode("\n\n", $value),
@@ -341,7 +378,6 @@ class AdminModule extends Module {
                 $formListItems = array();
 
                 if ($section) {
-                    $sectionVars = $siteVars[$section];
 
                     if ($this->getArg('submit')) {
                         $sectionVars = $this->prepareSubmitData('siteData');
@@ -349,16 +385,14 @@ class AdminModule extends Module {
                         $configFile->saveFile();
                         $this->redirectTo('site', false, false);
                     }
-                    
-                    foreach ($sectionVars as $key=>$value) {
-                        $formListItems[] = $this->getSiteItemForKey($section, $key, $value);
-                    }
-                    
+
+                    $formListItems = $this->prepareAdminForSection($section, $this);
+                                        
                 } else {
                     foreach ($siteVars as $sectionName=>$sectionVars){
                         $formListItems[] = array(
                             'type'=>'url',
-                            'name'=>$sectionName,
+                            'name'=>$this->getSectionTitleForKey($sectionName),
                             'value'=>$this->buildBreadcrumbURL('site', array(
                                 'section'=>$sectionName
                                 )
@@ -369,6 +403,7 @@ class AdminModule extends Module {
                                             
                 $this->assign('section'      , $section);
                 $this->assign('formListItems', $formListItems);
+                
                 break;
 
             case 'index':

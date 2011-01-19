@@ -1,7 +1,17 @@
 <?php
+/**
+  * @package Module
+  * @subpackage Error
+  */
 
+/**
+  */
 require_once realpath(LIB_DIR.'/Module.php');
 
+/**
+  * @package Module
+  * @subpackage Error
+  */
 class ErrorModule extends Module {
   protected $id = 'error';
 
@@ -33,6 +43,10 @@ class ErrorModule extends Module {
       'message' =>  'This module requires you to login',
       'linkText' => 'Click here to login'
     ),
+    'protectedACL' => array(
+      'message' =>  'You are not permitted to use this module',
+      'linkText' => 'Click here to login'
+    ),
     'default' => array(
       'status'  => '500 Internal Server Error',
       'message' => 'Unknown error',
@@ -58,7 +72,7 @@ class ErrorModule extends Module {
     if($this->devError() === false){
       $this->assign('message', $error['message']);
     } else {
-      $this->assign('message', $this->devError());
+      $this->assign('message', nl2br($this->devError()));
     }
     $this->assign('url', $url);
   }
@@ -66,8 +80,9 @@ class ErrorModule extends Module {
   protected function devError() {
     
     // production
-    if($GLOBALS['siteConfig']->getVar('USE_PRODUCTION_ERROR_HANDLER'))
+    if($this->getSiteVar('PRODUCTION_ERROR_HANDLER_ENABLED')) {
       return false;
+    }
       
     //check for development errors
     if(isset($_GET['error'])){
