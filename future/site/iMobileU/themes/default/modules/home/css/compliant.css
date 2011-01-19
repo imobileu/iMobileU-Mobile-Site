@@ -1,4 +1,5 @@
 body {
-	background-image: url(/common/images/background-glow.png);
+	background-image:url(../images/compliant/homebg.png);
 	background-repeat: repeat-x;
+	background-color:#102c57;
 }
