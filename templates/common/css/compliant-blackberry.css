@@ -1,0 +1,190 @@
+.springboard {
+	padding: 0;
+}
+.springboard div {
+	margin: 2px 4px;
+	line-height: 1.1em;
+}
+.springboard div a {
+	padding: 4px 6px;
+	color: #333;
+}
+.springboard div.utility a {
+	font-size: 90%;
+}
+.springboard div.separator {
+	clear: both;
+	float: none;
+	width: 100%;
+	height: 10px;
+}
+.forminput {
+	width: 89%;
+	height: 1.2em;
+	border-width: 2px;
+}
+.imagebutton {
+    float: right;
+}
+#search {
+    font-size: 64.7%;
+}
+#searchformcontainer {
+    margin-top: 0px;
+    margin-bottom: 1em;
+    padding-top: 0px;
+}
+
+.homelink {
+    float: left;
+}
+/*.pagetitle {
+    margin-top:-2.7em;
+    margin-left: 0.2em;
+}*/
+
+
+
+#tabs {
+	margin: 0 0;
+}
+
+#tabs li a {
+	display: block;
+	text-decoration: none;
+	padding: 7px 11px 9px 11px;
+	min-width: 30px;
+}
+
+#tabs.smalltabs li {
+	font-size: 88.235%;
+	margin-right: 3px;
+}
+
+#tabs.smalltabs li a {
+	padding-right: 8px;
+	padding-left: 8px;
+}
+
+#tabs li.active {
+	margin-top: -2px;
+}
+
+#tabs li.active a {
+	padding-top: 8px;
+	padding-bottom: 10px;
+}
+
+#tabbodies {
+	margin: 0 -12px 0 -12px;
+}
+
+.tabbody {
+	display: block;
+	position: relative;
+	min-height: 230px;
+}
+
+.tabbody h3 {
+	margin-top: 22px;
+}
+
+.tabbody h3:first-child {
+    margin-top: 8px;
+}
+
+.tabbody li:first-child h3 {
+	margin-top: 2px;
+}
+
+#tabstrip {
+	list-style-type: none;
+	height: 32px;
+	-webkit-border-radius: 10px;	
+	margin: 0;
+	padding: 0;
+	left: 0;
+	overflow: hidden;
+}
+
+#tabstrip li {
+	float: left;
+	margin: 0;
+	text-align: center;
+	height: 33px;
+}
+
+#tabstrip a {
+	display: block;
+	height: 32px;
+	line-height: 32px;
+	text-decoration: none;
+	color: #fff;
+	background: url(/common/images/tabstrip.jpg) repeat-x;
+	-webkit-background-origin: padding-box; -webkit-background-clip: content-box; 
+	border-right: 1px solid #9fb8d3;
+	-webkit-border-radius: 1px;	
+}	
+
+#tabstrip li.active a {
+	background-image: url(/common/images/tabstrip-active.jpg);
+}
+
+#tabstrip li:first-child a {
+	-webkit-border-bottom-left-radius: 10px;	
+	-webkit-border-top-left-radius: 10px;	
+}
+
+#tabstrip li:last-child a {
+	-webkit-border-bottom-right-radius: 10px;	
+	-webkit-border-top-right-radius: 10px;	
+}
+
+.twotabs li {
+	width: 50%;
+}
+
+.threetabs li {
+	width: 33.333%;
+}
+
+.fourtabs li {
+	width: 25%;
+}
+
+.fivetabs li {
+	width: 20%;
+}
+
+.fontsize {
+	font-size: 75%;
+	margin: 20px 10px;
+}
+
+.fontsize a, .fontsize span {
+	padding: 0 10px;
+}
+
+.fontsmall {
+	font-size: 5pt;
+}
+
+.fontmedium {
+	font-size: 8pt;
+}
+
+.fontlarge {
+	font-size: 11pt;
+}
+
+.fontxlarge {
+	font-size: 14pt;
+}
+
+.homepage .moduleicon {
+	padding-left: 0;
+	margin-right: 8px;
+	margin-left: -2px;
+	float: left;
+}
+
